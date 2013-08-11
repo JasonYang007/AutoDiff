@@ -420,51 +420,6 @@ ADExpr<T,ExpBinary<T,AD_COMMA,ADExpr<T,E1>,ADExpr<T,E2> > >
 	return ADExpr<T,ExpBinary<T,AD_COMMA,ADExpr<T,E1>,ADExpr<T,E2> > >(e1, e2);
 }
 
-namespace {
-
-template<class T, class S>
-struct Pair;
-
-template<class T, class S>
-struct PairAssign
-{
-	PairAssign(Pair<T,S> & obj)
-		: oPair(obj) {}
-
-	Pair<T,S> & oPair;
-};
-
-
-template<class T, class S>
-struct Pair
-{	
-	T first;
-	S second;
-	PairAssign<T,S> operator=(T const & x)
-	{
-		first = x;
-		return PairAssign<T,S>(*this);
-	}
-};
-
-template<class T,class S>
-PairAssign<T,S> & operator ,(PairAssign<T,S> & obj, S const & y)
-{
-	obj.oPair.second = y;
-	return obj;
-}
-
-void test()
-{
-	int i = 1;
-	double d = 3.14;
-	Pair<int,double> pair;
-
-	pair = i , d;
-}
-
-}
-
 
 } /* end of namespace: autodiff */
 
