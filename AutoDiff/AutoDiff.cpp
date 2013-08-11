@@ -55,15 +55,14 @@ void test_func_mult(double xx, double yy)
 {
 	ADVar<double> x=xx;
 	ADVar<double> y=yy;
-	ADVar<double> z1;
-	ADVar<double> z2;
+	ADArray<double> z(2);
 	ADVar<double> res;
 	res.SetAsRoot();
 
 	EvaluateValueAdjoint((
-		z1 = x*x
-		, z2 = z1 * (x + y)
-		, res = z2 / y
+		z[0] = x*x
+		, z[1] = z[0] * (x + y)
+		, res = z[1] / y
 	));
 
 	std::cout << "x*x/y = " << res << std::endl;

@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <functional>
+#include <vector>
 
 namespace autodiff
 {
@@ -397,6 +398,30 @@ std::ostream & operator<<(std::ostream & ostr, ADVar<T> const & expr)
 {
 	return ostr << '(' << expr.Value() << ',' << expr.Adjoint() << ')';
 }
+
+template<class T>
+struct ADArray
+{
+    typedef ADVar<T> element_t;
+
+    ADArray(std::size_t len=0)
+    : oVec(len) {}
+
+    element_t & operator[](std::size_t idx)
+    {
+        return oVec[idx];
+    }
+
+    element_t const & operator[](std::size_t idx) const
+    {
+        return oVec[idx];
+    }
+
+    size_t size() const { return oVec.size(); }
+
+private:
+    std::vector<element_t> oVec;
+};
 
 //*** Binary operations
 
