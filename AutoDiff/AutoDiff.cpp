@@ -9,15 +9,6 @@ void nop()
 {
 }
 
-//template<class T, class E>
-//T EvaluateValueAdjoint(ADExpr<T,E> & expr)
-//{
-//	T res = expr.EvaluateValue();
-//	expr.Adjoint() = T(1);
-//	expr.EvaluateAdjoint();
-//	return res;
-//}
-
 template<class T, class E>
 T EvaluateValueAdjoint(ADExpr<T,E> const & ee)
 {
@@ -65,7 +56,44 @@ void test_func_mult(double xx, double yy)
 		, res = z[1] / y
 	));
 
-	std::cout << "x*x/y = " << res << std::endl;
+	std::cout << "x*x*(x+y)/y = " << res << std::endl;
+	PrintXY(x,y);
+}
+
+//--- nested_apply
+template<class T>
+struct Func;
+
+template<class T, class E>
+struct Func<ADExpr<T,E> >
+{
+    typedef ADExpr<T,E> var_t;
+    typedef EXP_ASSIGN(var_t,
+                EXP_DIV(
+                   EXP_MULT(
+                        EXP_MULT(var_t,var_t),
+                        EXP_PLUS(var_t,var_t)),
+                   var_t))
+            return_t;
+    
+    return_t operator()(var_t const & x, var_t const & y, ADVar<T> & z)
+    {
+        return z = (x*x)*(x+y)/y;
+    }
+};
+
+void test_func_nested(double xx, double yy)
+{
+	ADVar<double> x=xx;
+	ADVar<double> y=yy;
+	ADVar<double> z;
+    z.SetAsRoot();
+
+    EvaluateValueAdjoint((
+        Func<ADExpr<double,ExpVar> >()(x,y,z)
+    ));
+        
+	std::cout << "F(x) = " << z << std::endl;
 	PrintXY(x,y);
 }
 
@@ -76,6 +104,7 @@ void autodiff_test()
 	
 	test_func_add(x,y);
 	test_func_mult(x,y);
+    test_func_nested(x,y);
 
 	nop();
 }

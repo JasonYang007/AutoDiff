@@ -12,6 +12,16 @@ namespace autodiff
 template<class T, class TExpr>
 struct ADExpr;
 
+template<class T>
+struct ADExpr_traits;
+
+template<class T, class E>
+struct ADExpr_traits<ADExpr<T,E> >
+{
+    typedef T type;
+    typedef E expr_type;
+};
+
 struct ExpConst {};
 struct ExpVar {};
 
@@ -92,6 +102,28 @@ struct ADExpr<T, ExpBinary<T, BinOp, E1, E2> >
 	ADExpr(E1 const & e1, E2 const & e2)
 		: base_t(e1,e2) {}
 };
+
+template<class T1, class T2>
+struct assert_same_type;
+
+template<class T>
+struct assert_same_type<T,T> {};
+
+template<AD_BINOP BinOp, class E1, class E2>
+struct BinExprClass
+{
+    typedef typename ADExpr_traits<E1>::type value_type;
+    typedef typename ADExpr_traits<E2>::type value_type2;
+    typedef assert_same_type<value_type, value_type2> asserted_t;
+    typedef ADExpr<value_type, ExpBinary<value_type, BinOp, E1, E2> > type;
+};
+
+#define AD_BIN_EXPR(BINOP, A1, A2)  typename BinExprClass<BINOP,A1,A2>::type
+#define EXP_ASSIGN(A1,A2) AD_BIN_EXPR(AD_ASSIGN,A1,A2)
+#define EXP_PLUS(A1,A2)   AD_BIN_EXPR(AD_PLUS,A1,A2)
+#define EXP_MINUS(A1,A2)  AD_BIN_EXPR(AD_MINUS,A1,A2)
+#define EXP_MULT(A1,A2)   AD_BIN_EXPR(AD_MULT,A1,A2)
+#define EXP_DIV(A1,A2)    AD_BIN_EXPR(AD_DIV,A1,A2)
 
 template<class T, AD_BINOP BinOp, class E1, class E2>
 struct ExpBinaryCore
@@ -341,7 +373,7 @@ std::ostream & operator<<(std::ostream & ostr, ADExpr<T,ExpVar> const & expr)
 	return ostr << '(' << expr.Value() << ',' << expr.Adjoint() << ')';
 }
 
-// ADVar
+//---- ADVar definition
 #define ADVAR_DEFINE_ASSIGN_OP(OP) \
 	ADVar & operator OP(T const val)\
 	{\
@@ -399,6 +431,7 @@ std::ostream & operator<<(std::ostream & ostr, ADVar<T> const & expr)
 	return ostr << '(' << expr.Value() << ',' << expr.Adjoint() << ')';
 }
 
+//--- ADArray definition
 template<class T>
 struct ADArray
 {
@@ -423,8 +456,8 @@ private:
     std::vector<element_t> oVec;
 };
 
-//*** Binary operations
-
+//*** Binary operators
+//--- Arithmetic
 #define AD_DEFINE_BINARY_OP(OPNAME, BINFUNC)\
 	template<class T, class E1, class E2>\
 	ADExpr<T,ExpBinary<T,OPNAME,ADExpr<T,E1>,ADExpr<T,E2> > > \
@@ -438,6 +471,7 @@ AD_DEFINE_BINARY_OP(AD_MINUS, operator-)
 AD_DEFINE_BINARY_OP(AD_MULT, operator*)
 AD_DEFINE_BINARY_OP(AD_DIV, operator/)
 
+//--- Comma operator
 template<class T, class E1, class E2>
 ADExpr<T,ExpBinary<T,AD_COMMA,ADExpr<T,E1>,ADExpr<T,E2> > > 
 	operator ,(ADExpr<T,E1> const & e1, ADExpr<T,E2> const & e2)
