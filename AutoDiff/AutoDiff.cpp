@@ -97,14 +97,32 @@ void test_func_nested(double xx, double yy)
 	PrintXY(x,y);
 }
 
+void test_func_lambda(double xx, double yy)
+{
+    ADPos<double,1> _1;
+    ADPos<double,2> _2;
+
+	ADVar<double> x=xx;
+	ADVar<double> y=yy;
+	ADVar<double> z;
+    z.SetAsRoot();
+
+    EvaluateValueAdjoint((
+		z = (_1 * _2)(x,y)
+    ));
+	std::cout << "(_1 * _2)(x,y) = " << z << std::endl;
+	PrintXY(x,y);
+}
+
 void autodiff_test()
 {
 	double x=6.0;
 	double y=3.0;
 	
-	test_func_add(x,y);
-	test_func_mult(x,y);
-    test_func_nested(x,y);
+//  test_func_add(x,y);
+//  test_func_mult(x,y);
+//  test_func_nested(x,y);
+    test_func_lambda(x,y);
 
 	nop();
 }

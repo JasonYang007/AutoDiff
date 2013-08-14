@@ -46,6 +46,80 @@ private:
 	T adjoint;
 };
 
+template<class T0=void,class T1=void,class T2=void>
+struct Tuple {};
+
+template<int n, class Ttuple>
+struct Select;
+
+template<class T0, class T1, class T2>
+struct Select<1,Tuple<T0,T1,T2> > 
+{ 
+	typedef T0 type;
+    static T0 & call(T0 & x0, T1 & x1)
+	{
+        return x0;
+	}
+};
+
+template<class T0, class T1, class T2>
+struct Select<2,Tuple<T0,T1,T2> > 
+{ 
+	typedef T1 type;
+    static T1 & call(T0 & x0, T1 & x1)
+	{
+        return x1;
+	}
+};
+
+template<int n> 
+struct Lambda
+{
+    template<class T0,class T1>
+    typename Select<n,Tuple<T0,T1> >::type &
+    operator()(T0 & x0, T1 & x1)
+	{
+        return Select<n,Tuple<T0,T1> >::call(x0,x1);
+	}
+
+	void EvaluateAdjoint() {}
+};
+
+template<class E, class TArgs>
+struct Lambda_traits;
+
+template<class T,int n>
+struct ADExpr<T,Lambda<n> >
+	: Lambda<n>
+    , ExpCore<T>
+{
+	T EvaluateValue() { return T(); }
+};
+
+template<class T, int n, class TArgs>
+struct Lambda_traits<ADExpr<T,Lambda<n> >, TArgs> 
+{
+    typedef typename Select<n,TArgs>::type type;
+};
+
+
+template<class T,int n>
+struct ADPos
+	: ADExpr<T,Lambda<n> >
+{};
+
+
+
+template<class D>
+struct ExpLambdaCall
+{
+    template<class T0, class T1>
+    D & operator()(T0 & x0, T1 & x1)
+	{
+        return *static_cast<D *>(this);
+	}
+};
+
 template<class E, E Op>
 struct op_traits;
 
@@ -118,12 +192,26 @@ struct BinExprClass
     typedef ADExpr<value_type, ExpBinary<value_type, BinOp, E1, E2> > type;
 };
 
+#define ARG(...) __VA_ARGS__
 #define AD_BIN_EXPR(BINOP, A1, A2)  typename BinExprClass<BINOP,A1,A2>::type
-#define EXP_ASSIGN(A1,A2) AD_BIN_EXPR(AD_ASSIGN,A1,A2)
-#define EXP_PLUS(A1,A2)   AD_BIN_EXPR(AD_PLUS,A1,A2)
-#define EXP_MINUS(A1,A2)  AD_BIN_EXPR(AD_MINUS,A1,A2)
-#define EXP_MULT(A1,A2)   AD_BIN_EXPR(AD_MULT,A1,A2)
-#define EXP_DIV(A1,A2)    AD_BIN_EXPR(AD_DIV,A1,A2)
+#define EXP_ASSIGN(A1,A2) AD_BIN_EXPR(AD_ASSIGN,ARG(A1),ARG(A2))
+#define EXP_PLUS(A1,A2)   AD_BIN_EXPR(AD_PLUS,ARG(A1),ARG(A2))
+#define EXP_MINUS(A1,A2)  AD_BIN_EXPR(AD_MINUS,ARG(A1),ARG(A2))
+#define EXP_MULT(A1,A2)   AD_BIN_EXPR(AD_MULT,ARG(A1),ARG(A2))
+#define EXP_DIV(A1,A2)    AD_BIN_EXPR(AD_DIV,ARG(A1),ARG(A2))
+
+template<class T, AD_BINOP BinOp, class E1, class E2>
+struct ExpBinaryCore;
+
+template<class T, AD_BINOP BinOp, class E1, class E2, class T1, class T2>
+struct Lambda_traits<ADExpr<T,ExpBinary<T,BinOp,E1,E2> >, Tuple<T1,T2> >
+{
+    typedef Tuple<T1,T2> tuple_t;
+    typedef typename Lambda_traits<E1,tuple_t>::type A1;
+    typedef typename Lambda_traits<E2,tuple_t>::type A2;
+    typedef ADExpr<T,ExpBinary<T,BinOp,A1,A2> > type;
+};
+
 
 template<class T, AD_BINOP BinOp, class E1, class E2>
 struct ExpBinaryCore
@@ -138,6 +226,15 @@ struct ExpBinaryCore
 		T val1 = expr1.EvaluateValue();
 		T val2 = expr2.EvaluateValue();
 		return this->Value() = op_traits<AD_BINOP,BinOp>::call(val1, val2);
+	}
+
+    template<class A1, class A2>
+    typename Lambda_traits<ADExpr<T,ExpBinary<T,BinOp,E1,E2> >, Tuple<ADExpr<T,A1>,ADExpr<T,A2> > >::type
+    operator()(ADExpr<T,A1> & x1, ADExpr<T,A2> & x2)
+	{
+        typedef typename Lambda_traits< ADExpr<T,ExpBinary<T,BinOp,E1,E2> >
+			                          , Tuple<ADExpr<T,A1>,ADExpr<T,A2> > >::type return_t;
+        return return_t(expr1(x1,x2), expr2(x1,x2));
 	}
 
 	E1 expr1;
@@ -163,7 +260,7 @@ struct ExpBinaryCore<T,AD_ASSIGN,E1,E2>
 
 template<class T, class E1, class E2>
 struct ExpBinary<T, AD_COMMA, E1, E2>
-	:  public ExpBinaryCore<T,AD_COMMA,E1,E2>
+	:  ExpBinaryCore<T,AD_COMMA,E1,E2>
 {
 	typedef ExpBinaryCore<T,AD_COMMA,E1,E2>	base_t;
 
@@ -349,7 +446,6 @@ struct ADExpr<T,ExpVar>
 		return adjoint = *adj_ptr;
 	}
 	
-
 protected:
 	ADExpr()
 		: adjoint(), val_ptr(0L), adj_ptr(0L)
@@ -388,6 +484,7 @@ std::ostream & operator<<(std::ostream & ostr, ADExpr<T,ExpVar> const & expr)
 	ADVAR_DEFINE_ASSIGN_OP(*=)\
 	ADVAR_DEFINE_ASSIGN_OP(/=)
 
+
 template<class T>
 struct ADVar
 	: ADExpr<T,ExpVar>, ExpCore<T>
@@ -418,10 +515,10 @@ struct ADVar
 	}
 
 	template<class E>
-	ADExpr<T,ExpBinary<T,AD_ASSIGN,base_t,ADExpr<T,E> > > 
+    EXP_ASSIGN(base_t, ARG(ADExpr<T,E>))
 	operator=(ADExpr<T,E> const & other)
 	{
-		return ADExpr<T,ExpBinary<T,AD_ASSIGN,base_t,ADExpr<T,E> > >(*this, other);
+		return EXP_ASSIGN(base_t, ARG(ADExpr<T,E>))(*this, other);
 	}
 };
 
