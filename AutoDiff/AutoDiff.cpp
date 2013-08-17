@@ -34,7 +34,8 @@ void PrintXY(E1 const & x, E2 const & y)
 void test_func_add(double xx, double yy)
 {
 	ADVar<double> x=xx;
-	ADVar<double> y=yy;
+	ADRandVar<double> y=yy;
+
 	ADVar<double> res;
 	res.SetAsRoot();
 	EvaluateValueAdjoint( res = x * x - y );
@@ -103,7 +104,8 @@ void test_func_lambda(double xx, double yy)
     ADPos<double,2> _2;
 
 	ADVar<double> x=xx;
-	ADVar<double> y=yy;
+	ADRandVar<double> y=yy;
+
 	ADVar<double> z;
     z.SetAsRoot();
 

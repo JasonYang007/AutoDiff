@@ -412,10 +412,11 @@ std::ostream & operator<<(std::ostream & ostr, ADExpr<T,ExpConst> const & expr)
 }
 
 //----	Variable expression
+
 template<class T>
-struct ADExpr<T,ExpVar>
+struct ADExprVarCore
 {
-	ADExpr(T * v_ptr, T *a_ptr)
+	ADExprVarCore(T * v_ptr, T *a_ptr)
 		: adjoint(), val_ptr(v_ptr), adj_ptr(a_ptr)
 	{}
 
@@ -448,7 +449,7 @@ struct ADExpr<T,ExpVar>
 	}
 	
 protected:
-	ADExpr()
+	ADExprVarCore()
 		: adjoint(), val_ptr(0L), adj_ptr(0L)
 	{}
 
@@ -463,9 +464,25 @@ private:
 	T * adj_ptr;
 };
 
+template<class T>
+struct ADExpr<T,ExpVar>
+	: ADExprVarCore<T>
+{
+    typedef ADExprVarCore<T> base_t;
+
+	ADExpr(T * v_ptr, T *a_ptr)
+		: base_t(v_ptr, a_ptr)
+	{}
+
+protected:
+	ADExpr()
+		: base_t()
+	{}
+};
+
 
 template<class T>
-std::ostream & operator<<(std::ostream & ostr, ADExpr<T,ExpVar> const & expr)
+std::ostream & operator<<(std::ostream & ostr, ADExprVarCore<T> const & expr)
 {
 	return ostr << '(' << expr.Value() << ',' << expr.Adjoint() << ')';
 }
@@ -546,14 +563,16 @@ std::ostream & operator<<(std::ostream & ostr, ADVar<T> const & expr)
 //--- AdRandVar definition
 template<class T>
 struct ADExpr<T,ExpRandVar>
-	: ADExpr<T,ExpVar>
+	: ADExprVarCore<T>
 {
-    typedef ADExpr<T,ExpVar> base_t;
+    typedef ADExprVarCore<T> base_t;
+
 	ADExpr(T * v_ptr, T *a_ptr)
-		: base_t(v_ptr, a_ptr) 
+		: base_t(v_ptr, a_ptr)
 	{}
+
 protected:
-    ADExpr()
+	ADExpr()
 		: base_t()
 	{}
 };
