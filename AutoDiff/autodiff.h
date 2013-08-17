@@ -24,6 +24,7 @@ struct ADExpr_traits<ADExpr<T,E> >
 
 struct ExpConst {};
 struct ExpVar {};
+struct ExpRandVar {};
 
 template<class T>
 struct ExpCore
@@ -470,39 +471,37 @@ std::ostream & operator<<(std::ostream & ostr, ADExpr<T,ExpVar> const & expr)
 }
 
 //---- ADVar definition
-#define ADVAR_DEFINE_ASSIGN_OP(OP) \
-	ADVar & operator OP(T const val)\
+#define ADVAR_DEFINE_ASSIGN_OP(ADTYPE, OP) \
+	ADTYPE & operator OP(T const val)\
 	{\
 		base_data_t::Value() OP val;\
 		return *this;\
 	}
 
-#define ADVAR_DEFINE_ASSIGN()\
-	ADVAR_DEFINE_ASSIGN_OP(=)\
-	ADVAR_DEFINE_ASSIGN_OP(+=)\
-	ADVAR_DEFINE_ASSIGN_OP(-=)\
-	ADVAR_DEFINE_ASSIGN_OP(*=)\
-	ADVAR_DEFINE_ASSIGN_OP(/=)
+#define ADVAR_DEFINE_ASSIGN(ADTYPE)\
+	ADVAR_DEFINE_ASSIGN_OP(ADTYPE, =)\
+	ADVAR_DEFINE_ASSIGN_OP(ADTYPE, +=)\
+	ADVAR_DEFINE_ASSIGN_OP(ADTYPE, -=)\
+	ADVAR_DEFINE_ASSIGN_OP(ADTYPE, *=)\
+	ADVAR_DEFINE_ASSIGN_OP(ADTYPE, /=)
 
 
-template<class T>
-struct ADVar
-	: ADExpr<T,ExpVar>, ExpCore<T>
+template<class T, class TExpVar>
+struct ADVarCore
+	: ADExpr<T,TExpVar>, ExpCore<T>
 {
-	typedef ADExpr<T,ExpVar> base_t;
+	typedef ADExpr<T,TExpVar> base_t;
 	typedef ExpCore<T>	 base_data_t;
 
 	using base_data_t::Value;
 	using base_data_t::Adjoint;
 
-	ADVar(T const val = T())
+	ADVarCore(T const val = T())
 		: base_t()
 		, base_data_t(val,T())
 	{
 		base_t::set_pointer(&base_data_t::Value(), &base_data_t::Adjoint());
 	}
-
-	ADVAR_DEFINE_ASSIGN()
 
 	void SetAdjoint(T const adj)
 	{
@@ -513,6 +512,22 @@ struct ADVar
 	{
 		this->SetAdjoint(T(1));
 	}
+
+
+};
+
+template<class T>
+struct ADVar
+	: ADVarCore<T,ExpVar>
+{
+    typedef ADVarCore<T,ExpVar> core_base_t;
+    typedef core_base_t::base_t base_t;
+
+    ADVar(T const val = T())
+		: core_base_t(val)
+	{}
+
+	ADVAR_DEFINE_ASSIGN(ADVar)
 
 	template<class E>
     EXP_ASSIGN(base_t, ARG(ADExpr<T,E>))
@@ -527,6 +542,43 @@ std::ostream & operator<<(std::ostream & ostr, ADVar<T> const & expr)
 {
 	return ostr << '(' << expr.Value() << ',' << expr.Adjoint() << ')';
 }
+
+//--- AdRandVar definition
+template<class T>
+struct ADExpr<T,ExpRandVar>
+	: ADExpr<T,ExpVar>
+{
+    typedef ADExpr<T,ExpVar> base_t;
+	ADExpr(T * v_ptr, T *a_ptr)
+		: base_t(v_ptr, a_ptr) 
+	{}
+protected:
+    ADExpr()
+		: base_t()
+	{}
+};
+
+template<class T>
+struct ADRandVar
+	: ADVarCore<T,ExpRandVar>
+{
+    typedef ADVarCore<T,ExpRandVar> core_base_t;
+    typedef core_base_t::base_t base_t;
+
+    ADRandVar(T const val = T())
+		: core_base_t(val)
+	{}
+    
+	ADVAR_DEFINE_ASSIGN(ADRandVar)
+
+	template<class E>
+    EXP_ASSIGN(base_t, ARG(ADExpr<T,E>))
+	operator=(ADExpr<T,E> const & other)
+	{
+		return EXP_ASSIGN(base_t, ARG(ADExpr<T,E>))(*this, other);
+	}
+};
+
 
 //--- ADArray definition
 template<class T>
